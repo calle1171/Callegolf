@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GolfTrack v1.3 — Handicap & Statistiken</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1410;
+    --surface: #131c17;
+    --surface2: #192320;
+    --border: #243028;
+    --green: #4caf6e;
+    --green-dim: #2d6b43;
+    --gold: #c9a84c;
+    --text: #e8ede9;
+    --text-dim: #7a9080;
+    --red: #e05c5c;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse at 20% 0%, #1a3326 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, #0f2218 0%, transparent 50%);
+  }
+
+  /* Header */
+  header {
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(13,20,16,0.8);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--green); }
+  .api-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* API Config Panel */
+  .api-panel {
+    margin: 24px 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .api-panel h3 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .api-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .api-row input {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-row input:focus { border-color: var(--green); }
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-green {
+    background: var(--green);
+    color: #0d1410;
+  }
+  .btn-green:hover { background: #5dc980; transform: translateY(-1px); }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+  .api-note {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+  }
+  .api-note a { color: var(--green); }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .tab {
+    padding: 14px 20px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .tab.active { color: var(--green); border-color: var(--green); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Main content */
+  .content { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Course Search */
+  .search-box {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .search-box input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box input:focus { border-color: var(--green); }
+  .search-box input::placeholder { color: var(--text-dim); }
+
+  /* Course Cards */
+  .courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .course-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .course-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--green), var(--gold));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .course-card:hover { border-color: var(--green-dim); transform: translateY(-2px); }
+  .course-card:hover::before { opacity: 1; }
+  .course-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+  }
+  .course-meta {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .course-meta span {
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Course Detail */
+  .course-detail {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .course-detail.visible { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    transition: color 0.2s;
+  }
+  .back-btn:hover { color: var(--green); }
+
+  .course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .course-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .course-subtitle { color: var(--text-dim); margin-top: 6px; }
+
+  .stats-strip {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+  .stat-box .val {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--green);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-box .lbl {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Scorecard */
+  .scorecard-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .scorecard-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+  thead th {
+    background: var(--surface2);
+    padding: 10px 12px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    letter-spacing: 1px;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+    background: var(--surface);
+    transition: background 0.15s;
+  }
+  tbody td:first-child { text-align: left; font-weight: 500; color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 0.78rem; }
+  tbody tr:hover td { background: var(--surface2); }
+  .hole-num { color: var(--gold); font-weight: 500; }
+  .par-3 { color: #7eb8ff; }
+  .par-4 { color: var(--text); }
+  .par-5 { color: var(--green); }
+  tfoot td {
+    background: var(--surface2);
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--gold);
+  }
+  tfoot td:first-child { text-align: left; }
+
+  /* Handicap Panel */
+  .hc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 700px) { .hc-grid { grid-template-columns: 1fr; } }
+
+  .hc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .hc-card h3 {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--green); }
+  .form-group select option { background: var(--bg); }
+
+  .hc-result {
+    text-align: center;
+    padding: 32px 16px;
+  }
+  .hc-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--green);
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(76,175,110,0.3);
+  }
+  .hc-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+  .hc-formula {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 20px;
+    text-align: left;
+    line-height: 1.8;
+  }
+
+  /* Rounds history */
+  .rounds-list { display: flex; flex-direction: column; gap: 10px; }
+  .round-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    flex-wrap: wrap;
+  }
+  .round-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    min-width: 100px;
+  }
+  .round-course { flex: 1; font-weight: 500; }
+  .round-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .round-diff {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--surface2);
+  }
+  .round-diff.good { color: var(--green); }
+  .round-diff.bad { color: var(--red); }
+
+  /* API Response viewer */
+  .code-block {
+    background: #0a0f0c;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: #a0c8b0;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.7;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .code-block .key { color: #7eb8ff; }
+  .code-block .str { color: #c9a84c; }
+  .code-block .num { color: var(--green); }
+
+  /* Endpoint docs */
+  .endpoint-doc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .endpoint-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    cursor: pointer;
+  }
+  .method-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+    background: var(--green-dim);
+    color: var(--green);
+  }
+  .endpoint-path {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--text);
+  }
+  .endpoint-desc { font-size: 0.82rem; color: var(--text-dim); margin-left: auto; }
+  .endpoint-body {
+    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    display: none;
+  }
+  .endpoint-body.open { display: block; }
+  .param-table { width: 100%; font-size: 0.82rem; }
+  .param-table th {
+    text-align: left; color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding-bottom: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .param-table td { padding: 6px 0; vertical-align: top; }
+  .param-table td:first-child {
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    padding-right: 20px;
+    white-space: nowrap;
+  }
+  .param-table td:last-child { color: var(--text-dim); }
+
+  /* Status */
+  .status { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.red { background: var(--red); }
+  .dot.yellow { background: var(--gold); }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    font-weight: 700;
+  }
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+  /* loading */
+  .loading {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-dim); font-size: 0.88rem;
+    padding: 20px;
+  }
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .alert-info { background: rgba(76,175,110,0.1); border: 1px solid var(--green-dim); color: var(--green); }
+  .alert-warn { background: rgba(201,168,76,0.1); border: 1px solid #5a4a1a; color: var(--gold); }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 18px; }
+    .content, .tabs, .api-panel { padding-left: 18px; padding-right: 18px; }
+    .courses-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Golf<span>Track</span> <span style="font-size:0.65rem;color:var(--text-dim);font-family:'DM Mono',monospace;font-weight:400;vertical-align:middle;">v1.3</span></div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="status" id="apiStatus">
+      <div class="dot yellow"></div>
+      <span>Demo-Modus</span>
+    </div>
+    <div class="api-badge">golfcourseapi.com</div>
+  </div>
+</header>
+
+<div class="api-panel">
+  <h3>⚙ API-Konfiguration</h3>
+  <div class="api-row">
+    <input type="password" id="apiKeyInput" placeholder="Dein API-Key (z.B. eyJhbGc...)" />
+    <button class="btn btn-green" onclick="saveApiKey()">Verbinden</button>
+    <button class="btn btn-outline" onclick="useDemoMode()">Demo-Modus</button>
+  </div>
+  <div class="api-note">
+    API-Key aus der Bestätigungs-E-Mail von <a href="https://golfcourseapi.com" target="_blank">golfcourseapi.com</a> eintragen · 300 Anfragen/Tag · Funktioniert direkt im Browser
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('courses')">🏌️ Plätze</div>
+  <div class="tab" onclick="showTab('handicap')">📊 Handicap</div>
+  <div class="tab" onclick="showTab('api')">🔌 API-Docs</div>
+</div>
+
+<!-- COURSES TAB -->
+<div class="content">
+  <div class="panel active" id="tab-courses">
+    <div id="courseSearch">
+      <p class="section-title">Golfplatz suchen</p>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Platzname, Stadt oder Land..." onkeydown="if(event.key==='Enter')searchCourses()" />
+        <button class="btn btn-green" onclick="searchCourses()">Suchen</button>
+      </div>
+      <div id="searchStatus"></div>
+      <div class="courses-grid" id="coursesGrid"></div>
+    </div>
+    <div class="course-detail" id="courseDetail">
+      <div class="back-btn" onclick="backToList()">← Zurück zur Suche</div>
+      <div id="courseDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- HANDICAP TAB -->
+  <div class="panel" id="tab-handicap">
+    <p class="section-title">Handicap-Rechner</p>
+    <div class="hc-grid">
+      <div>
+        <div class="hc-card" style="margin-bottom:16px;">
+          <h3>Neue Runde eintragen</h3>
+          <div class="form-group">
+            <label>Platz</label>
+            <input type="text" id="hcCourse" placeholder="Platzname" value="Golfclub München Eichenried" />
+          </div>
+          <div class="form-group">
+            <label>Brutto-Score</label>
+            <input type="number" id="hcScore" placeholder="z.B. 92" value="88" min="50" max="150" />
+          </div>
+          <div class="form-group">
+            <label>Course Rating (CR)</label>
+            <input type="number" id="hcCR" placeholder="z.B. 72.4" value="72.4" step="0.1" />
+          </div>
+          <div class="form-group">
+            <label>Slope Rating</label>
+            <input type="number" id="hcSlope" placeholder="z.B. 125" value="125" min="55" max="155" />
+          </div>
+          <button class="btn btn-green" style="width:100%;margin-top:8px;" onclick="addRound()">Runde hinzufügen</button>
+        </div>
+
+        <div class="hc-card">
+          <h3>Gespielte Runden</h3>
+          <div class="rounds-list" id="roundsList"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="hc-card" style="margin-bottom:16px;">
+          <h3>Handicap-Index (WHS)</h3>
+          <div class="hc-result">
+            <div class="hc-big" id="hcValue">—</div>
+            <div class="hc-label">Handicap Index</div>
+            <div class="hc-formula" id="hcFormula">
+              Noch keine Runden eingetragen.<br>
+              Füge mindestens 3 Runden hinzu,<br>
+              um den HCP-Index zu berechnen.
+            </div>
+          </div>
+        </div>
+        <div class="hc-card">
+          <h3>Spielvorgabe berechnen</h3>
+          <div class="form-group">
+            <label>Slope des Platzes</label>
+            <input type="number" id="svSlope" value="125" min="55" max="155" />
+          </div>
+          <div class="form-group">
+            <label>Course Rating</label>
+            <input type="number" id="svCR" value="72.4" step="0.1" />
+          </div>
+          <div class="form-group">
+            <label>Par des Platzes</label>
+            <input type="number" id="svPar" value="72" min="54" max="80" />
+          </div>
+          <button class="btn btn-green" style="width:100%;margin-top:8px;" onclick="calcSV()">Spielvorgabe berechnen</button>
+          <div id="svResult" style="margin-top:14px;text-align:center;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API TAB -->
+  <div class="panel" id="tab-api">
+    <p class="section-title">GolfCourseAPI.com — Endpunkte</p>
+    <div class="alert alert-info">
+      Basis-URL: <strong>https://api.golfcourseapi.com/v1</strong> · Auth: <code>Authorization: Key YOUR_API_KEY</code>
+    </div>
+    <div class="alert alert-warn">
+      ⚠ Free-Tier: 300 Requests/Tag · Die API-Docs-Seite ist JS-rendered; nach dem Login auf golfcourseapi.com findest du alle Endpunkte im Dashboard.
+    </div>
+
+    <div id="endpointDocs"></div>
+
+    <div class="divider"></div>
+    <p style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Live API-Antwort</p>
+    <div class="search-box" style="margin-bottom:12px;">
+      <input type="text" id="liveQuery" placeholder="Platz suchen (z.B. Bayern, Pebble Beach...)" value="Bayern" />
+      <button class="btn btn-green" onclick="liveSearch()">Anfrage senden</button>
+    </div>
+    <div id="liveResponse" class="code-block">// Klicke auf "Anfrage senden" um die API live zu testen...</div>
+  </div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let apiKey = '';
+let demoMode = true;
+let rounds = [
+  { date: '2024-04-10', course: 'GC München Eichenried', score: 88, cr: 72.4, slope: 125 },
+  { date: '2024-03-22', course: 'GC Gut Lärchenhof', score: 91, cr: 73.1, slope: 130 },
+  { date: '2024-03-08', course: 'GC Bad Griesbach', score: 85, cr: 71.8, slope: 122 },
+  { date: '2024-02-15', course: 'GC Solitude Stuttgart', score: 89, cr: 72.0, slope: 128 },
+  { date: '2024-01-28', course: 'GC Feldafing', score: 93, cr: 73.5, slope: 132 },
+];
+
+// Mock course data (GolfCourseAPI format)
+const MOCK_COURSES = [
+  {
+    id: 'de-001',
+    club_name: 'Golf Club München Eichenried',
+    location: { city: 'Eichenried', country: 'Germany', state: 'Bayern' },
+    courses: [{
+      id: 'de-001-c1', name: 'Championship Course', holes: 18,
+      tees: [
+        { name: 'Gelb', gender: 'M', par: 72, rating: 70.1, slope: 121, yardage: 5950 },
+        { name: 'Weiß', gender: 'M', par: 72, rating: 72.4, slope: 125, yardage: 6380 },
+        { name: 'Blau', gender: 'M', par: 72, rating: 74.2, slope: 130, yardage: 6720 },
+      ],
+      holes: [
+        { number: 1, par: 4, handicap: 5, tees: { white: 388, blue: 415 } },
+        { number: 2, par: 5, handicap: 13, tees: { white: 510, blue: 545 } },
+        { number: 3, par: 3, handicap: 17, tees: { white: 172, blue: 185 } },
+        { number: 4, par: 4, handicap: 3, tees: { white: 420, blue: 448 } },
+        { number: 5, par: 4, handicap: 9, tees: { white: 375, blue: 398 } },
+        { number: 6, par: 3, handicap: 15, tees: { white: 158, blue: 172 } },
+        { number: 7, par: 5, handicap: 11, tees: { white: 522, blue: 558 } },
+        { number: 8, par: 4, handicap: 1, tees: { white: 442, blue: 471 } },
+        { number: 9, par: 4, handicap: 7, tees: { white: 393, blue: 428 } },
+        { number: 10, par: 4, handicap: 6, tees: { white: 402, blue: 430 } },
+        { number: 11, par: 3, handicap: 16, tees: { white: 165, blue: 178 } },
+        { number: 12, par: 5, handicap: 12, tees: { white: 535, blue: 570 } },
+        { number: 13, par: 4, handicap: 2, tees: { white: 438, blue: 464 } },
+        { number: 14, par: 3, handicap: 18, tees: { white: 148, blue: 162 } },
+        { number: 15, par: 4, handicap: 8, tees: { white: 380, blue: 405 } },
+        { number: 16, par: 5, handicap: 14, tees: { white: 498, blue: 530 } },
+        { number: 17, par: 4, handicap: 4, tees: { white: 415, blue: 445 } },
+        { number: 18, par: 4, handicap: 10, tees: { white: 419, blue: 447 } },
+      ]
+    }]
+  },
+  {
+    id: 'de-002',
+    club_name: 'Golf Club Gut Lärchenhof',
+    location: { city: 'Pulheim', country: 'Germany', state: 'NRW' },
+    courses: [{ id: 'de-002-c1', name: 'Parkland Course', holes: 18, tees: [
+      { name: 'Gelb', gender: 'M', par: 72, rating: 70.5, slope: 125, yardage: 6100 },
+      { name: 'Weiß', gender: 'M', par: 72, rating: 73.1, slope: 130, yardage: 6540 },
+    ], holes: Array.from({length:18},(_,i)=>({number:i+1,par:[4,5,3,4,4,3,5,4,4,4,3,5,4,3,4,5,4,4][i],handicap:i+1,tees:{white:300+Math.floor(Math.random()*250)}})) }]
+  },
+  {
+    id: 'de-003',
+    club_name: 'Golf Club Bad Griesbach',
+    location: { city: 'Bad Griesbach', country: 'Germany', state: 'Bayern' },
+    courses: [{ id: 'de-003-c1', name: 'Uttlau', holes: 18, tees: [
+      { name: 'Gelb', gender: 'M', par: 72, rating: 69.8, slope: 118, yardage: 5800 },
+      { name: 'Weiß', gender: 'M', par: 72, rating: 71.8, slope: 122, yardage: 6210 },
+    ], holes: Array.from({length:18},(_,i)=>({number:i+1,par:[4,4,3,5,4,4,3,5,4,4,3,5,4,4,3,5,4,4][i],handicap:i+1,tees:{white:290+Math.floor(Math.random()*240)}})) }]
+  },
+];
+
+// ─── API Functions ────────────────────────────────────────────────────────────
+// CORS-Proxy für direkten Browser-Zugriff (kein Server nötig)
+const API_BASE = 'https://api.golfcourseapi.com/v1';
+
+async function corsRequest(targetUrl, key) {
+  // Try direct first (works if API has CORS headers)
+  try {
+    const r = await fetch(targetUrl, {
+      headers: { 'Authorization': `Key ${key}` }
+    });
+    if (r.ok) return r.json();
+  } catch(e) {}
+  // Fallback 1: corsproxy.io
+  try {
+    const r = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`, {
+      headers: { 'Authorization': `Key ${key}`, 'x-cors-api-key': 'temp_...' }
+    });
+    if (r.ok) return r.json();
+  } catch(e) {}
+  // Fallback 2: allorigins
+  const r2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl + (targetUrl.includes('?') ? '&' : '?') + 'api_key=' + key)}`);
+  if (!r2.ok) throw new Error('Alle Proxy-Versuche fehlgeschlagen');
+  const d = await r2.json();
+  return JSON.parse(d.contents);
+}
+
+async function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { alert('Bitte API-Key eingeben!'); return; }
+  apiKey = key;
+  // Verbindung testen
+  updateStatus('checking');
+  try {
+    const data = await fetchCourses('test');
+    demoMode = false;
+    updateStatus(true);
+    alert('✅ Verbunden! Tippe jetzt auf Suchen für echte Platzdaten.');
+    // Aktuelle Suche mit echten Daten neu starten
+    const q = document.getElementById('searchInput').value.trim();
+    if (q) searchCourses();
+  } catch(e) {
+    updateStatus(false);
+    alert('❌ Verbindung fehlgeschlagen:\n' + e.message + '\n\nPrüfe deinen API-Key.');
+  }
+}
+function useDemoMode() {
+  demoMode = true;
+  updateStatus(false);
+}
+function updateStatus(live) {
+  const s = document.getElementById('apiStatus');
+  if (live === 'checking') {
+    s.innerHTML = '<div class="dot yellow"></div><span>Verbinde...</span>';
+  } else {
+    s.innerHTML = live
+      ? '<div class="dot green"></div><span>Live API</span>'
+      : '<div class="dot yellow"></div><span>Demo-Modus</span>';
+  }
+}
+
+async function fetchCourses(query) {
+  const target = `${API_BASE}/search?search_query=${encodeURIComponent(query)}`;
+  return await corsRequest(target, apiKey);
+}
+async function fetchCourseDetail(courseId) {
+  const target = `${API_BASE}/courses/${courseId}`;
+  return await corsRequest(target, apiKey);
+}
+
+// ─── Course Search ────────────────────────────────────────────────────────────
+async function searchCourses() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  const grid = document.getElementById('coursesGrid');
+  const status = document.getElementById('searchStatus');
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Suche läuft...</div>';
+  status.innerHTML = '';
+
+  if (demoMode) {
+    await new Promise(r => setTimeout(r, 600));
+    const filtered = MOCK_COURSES.filter(c =>
+      c.club_name.toLowerCase().includes(q.toLowerCase()) ||
+      c.location.city.toLowerCase().includes(q.toLowerCase()) ||
+      c.location.state?.toLowerCase().includes(q.toLowerCase())
+    );
+    status.innerHTML = `<div class="alert alert-warn">⚠ Demo-Modus · ${filtered.length} Demo-Plätze · Verbinde deinen API-Key für echte Daten</div>`;
+    renderCourses(filtered.length ? filtered : MOCK_COURSES);
+  } else {
+    try {
+      const data = await fetchCourses(q);
+      // golfcourseapi.com returns { courses: [...] }
+      const courses = data.courses || data.results || [];
+      status.innerHTML = `<div class="alert alert-info">✅ ${courses.length} Plätze gefunden</div>`;
+      renderCourses(courses);
+    } catch (e) {
+      grid.innerHTML = `<div class="alert alert-warn">❌ API-Fehler: ${e.message}<br>Prüfe deinen API-Key und versuche es erneut.</div>`;
+    }
+  }
+}
+function renderCourses(courses) {
+  const grid = document.getElementById('coursesGrid');
+  if (!courses.length) {
+    grid.innerHTML = '<p style="color:var(--text-dim)">Keine Plätze gefunden.</p>';
+    return;
+  }
+  grid.innerHTML = courses.map(c => {
+    const name = c.club_name || c.name || 'Unbekannter Platz';
+    const city = c.location?.city || c.city || '';
+    const country = c.location?.country || c.country || '';
+    const state = c.location?.state || c.state || '';
+    const holes = typeof c.holes === 'number' ? c.holes : (c.courses?.[0]?.holes || 18);
+    const id = c.id || c.course_id || '';
+    return `
+    <div class="course-card" onclick="showCourse('${id}')">
+      <h3>${name}</h3>
+      <p style="font-size:0.83rem;color:var(--text-dim);margin-top:4px;">${city}${city && country ? ', ' : ''}${country}</p>
+      <div class="course-meta">
+        <span>⛳ ${holes} Löcher</span>
+        ${state ? `<span>${state}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function showCourse(id) {
+  document.getElementById('courseSearch').style.display = 'none';
+  const detail = document.getElementById('courseDetail');
+  const content = document.getElementById('courseDetailContent');
+  detail.classList.add('visible');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div>Platzdaten laden...</div>';
+
+  let course;
+  if (demoMode) {
+    await new Promise(r => setTimeout(r, 400));
+    // Find from mock — if from real API response, it might be nested differently
+    const club = MOCK_COURSES.find(c => c.id === id);
+    course = club ? { ...club.courses[0], club_name: club.club_name, location: club.location } : null;
+  } else {
+    try {
+      const data = await fetchCourseDetail(id);
+      course = data.course || data;
+    } catch (e) {
+      content.innerHTML = `<div class="alert alert-warn">❌ ${e.message}</div>`;
+      return;
+    }
+  }
+  if (!course) { content.innerHTML = '<p>Platz nicht gefunden.</p>'; return; }
+  renderCourseDetail(course);
+}
+
+function renderCourseDetail(c) {
+  const tee = c.tees?.find(t => t.name === 'Weiß') || c.tees?.[0] || {};
+  const holes = c.holes || [];
+  const frontNine = holes.slice(0, 9);
+  const backNine = holes.slice(9, 18);
+  const frontPar = frontNine.reduce((s, h) => s + h.par, 0);
+  const backPar = backNine.reduce((s, h) => s + h.par, 0);
+  const frontYds = frontNine.reduce((s, h) => s + (h.tees?.white || 0), 0);
+  const backYds = backNine.reduce((s, h) => s + (h.tees?.white || 0), 0);
+
+  const parColor = p => p===3 ? 'par-3' : p===5 ? 'par-5' : 'par-4';
+
+  const holeRow = (h) => `
+    <tr>
+      <td class="hole-num">${h.number}</td>
+      <td class="${parColor(h.par)}">${h.par}</td>
+      <td>${h.tees?.white || '—'}</td>
+      <td>${h.tees?.blue || '—'}</td>
+      <td style="color:var(--text-dim)">${h.handicap}</td>
+    </tr>`;
+
+  document.getElementById('courseDetailContent').innerHTML = `
+    <div class="course-header">
+      <div>
+        <div class="course-title">${c.club_name || c.name}</div>
+        <div class="course-subtitle">${c.location?.city || ''} · ${c.location?.country || ''} · ${c.name || ''}</div>
+      </div>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-box"><div class="val">${tee.par || 72}</div><div class="lbl">Par</div></div>
+      <div class="stat-box"><div class="val">${tee.rating || '—'}</div><div class="lbl">Course Rating</div></div>
+      <div class="stat-box"><div class="val">${tee.slope || '—'}</div><div class="lbl">Slope</div></div>
+      <div class="stat-box"><div class="val">${tee.yardage ? (tee.yardage/1.094).toFixed(0)+'m' : '—'}</div><div class="lbl">Länge</div></div>
+      <div class="stat-box"><div class="val">${c.holes?.length || 18}</div><div class="lbl">Löcher</div></div>
+    </div>
+
+    <div class="scorecard-title">Scorekarte — Abschlag Weiß</div>
+    <div class="scorecard-wrap">
+      <table>
+        <thead><tr>
+          <th>Loch</th><th>Par</th><th>Weiß (m)</th><th>Blau (m)</th><th>HCP</th>
+        </tr></thead>
+        <tbody>
+          ${frontNine.map(holeRow).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>Out</td><td>${frontPar}</td><td>${frontYds || '—'}</td><td>—</td><td></td>
+        </tr></tfoot>
+        <tbody>
+          ${backNine.map(holeRow).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td>In</td><td>${backPar}</td><td>${backYds || '—'}</td><td>—</td><td></td>
+        </tr>
+        <tr>
+          <td>Gesamt</td><td>${frontPar+backPar}</td>
+          <td>${(frontYds+backYds)||'—'}</td><td>—</td><td></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    ${c.tees?.length > 1 ? `
+    <div style="margin-top:24px">
+      <div class="scorecard-title">Verfügbare Abschläge</div>
+      <div class="stats-strip">
+        ${c.tees.map(t => `
+          <div class="stat-box">
+            <div class="val" style="font-size:1.1rem">${t.name}</div>
+            <div class="lbl" style="margin-top:4px">CR ${t.rating} · Slope ${t.slope}</div>
+            <div class="lbl">${t.yardage ? (t.yardage/1.094).toFixed(0)+'m' : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+  `;
+}
+
+function backToList() {
+  document.getElementById('courseSearch').style.display = '';
+  document.getElementById('courseDetail').classList.remove('visible');
+}
+
+// ─── Handicap ─────────────────────────────────────────────────────────────────
+function differential(score, cr, slope) {
+  return ((score - cr) * 113 / slope);
+}
+function addRound() {
+  const course = document.getElementById('hcCourse').value;
+  const score = parseInt(document.getElementById('hcScore').value);
+  const cr = parseFloat(document.getElementById('hcCR').value);
+  const slope = parseInt(document.getElementById('hcSlope').value);
+  if (!course || isNaN(score) || isNaN(cr) || isNaN(slope)) {
+    alert('Bitte alle Felder ausfüllen!'); return;
+  }
+  rounds.unshift({
+    date: new Date().toISOString().split('T')[0],
+    course, score, cr, slope
+  });
+  renderRounds();
+  calcHandicap();
+}
+function renderRounds() {
+  const list = document.getElementById('roundsList');
+  list.innerHTML = rounds.slice(0, 20).map(r => {
+    const diff = differential(r.score, r.cr, r.slope);
+    const abovePar = r.score - Math.round(r.cr);
+    return `
+      <div class="round-row">
+        <div class="round-date">${r.date}</div>
+        <div class="round-course">${r.course}</div>
+        <div class="round-score">${r.score}</div>
+        <div class="round-diff ${abovePar <= 5 ? 'good' : 'bad'}">Diff: ${diff.toFixed(1)}</div>
+      </div>
+    `;
+  }).join('');
+}
+function calcHandicap() {
+  if (rounds.length < 3) {
+    document.getElementById('hcValue').textContent = '—';
+    document.getElementById('hcFormula').innerHTML = `Noch ${3-rounds.length} Runde(n) nötig für HCP-Berechnung.`;
+    return;
+  }
+  const diffs = rounds.map(r => differential(r.score, r.cr, r.slope)).sort((a,b) => a-b);
+  let count, pct;
+  if (rounds.length <= 6) { count = 1; pct = ''; }
+  else if (rounds.length <= 8) { count = 2; pct = ''; }
+  else if (rounds.length <= 11) { count = 3; pct = ''; }
+  else if (rounds.length <= 14) { count = 4; pct = ''; }
+  else if (rounds.length <= 16) { count = 5; pct = ''; }
+  else if (rounds.length <= 18) { count = 6; pct = ''; }
+  else if (rounds.length <= 19) { count = 7; pct = ''; }
+  else { count = 8; pct = ''; }
+
+  const best = diffs.slice(0, count);
+  const avg = best.reduce((s,d)=>s+d,0)/best.length;
+  const hcIndex = Math.min(avg * 0.96, 54.0);
+
+  document.getElementById('hcValue').textContent = hcIndex.toFixed(1);
+  document.getElementById('hcFormula').innerHTML =
+    `WHS-Formel (${rounds.length} Runden):\n` +
+    `Beste ${count} von ${rounds.length} Score-Differentials:\n` +
+    best.map((d,i) => `  [${i+1}] ${d.toFixed(2)}`).join('\n') + '\n\n' +
+    `Durchschnitt: ${avg.toFixed(3)}\n` +
+    `× 0,96 (Anpassungsfaktor) = ${hcIndex.toFixed(1)}`;
+}
+function calcSV() {
+  const hcRaw = parseFloat(document.getElementById('hcValue').textContent);
+  if (isNaN(hcRaw)) { document.getElementById('svResult').innerHTML = '<p style="color:var(--text-dim)">Erst Handicap berechnen!</p>'; return; }
+  const slope = parseInt(document.getElementById('svSlope').value);
+  const cr = parseFloat(document.getElementById('svCR').value);
+  const par = parseInt(document.getElementById('svPar').value);
+  const sv = Math.round(hcRaw * (slope / 113) + (cr - par));
+  const svEl = document.getElementById('svResult');
+  svEl.innerHTML = `
+    <div class="hc-big" style="font-size:3rem">${sv >= 0 ? '+'+sv : sv}</div>
+    <div class="hc-label">Spielvorgabe</div>
+    <div class="hc-formula" style="text-align:left;margin-top:12px;">
+HCP-Index × (Slope/113) + (CR - Par)\n= ${hcRaw.toFixed(1)} × (${slope}/113) + (${cr} - ${par})\n= ${sv}
+    </div>`;
+}
+
+// ─── API Docs ─────────────────────────────────────────────────────────────────
+const ENDPOINTS = [
+  {
+    method: 'GET', path: '/v1/search', desc: 'Plätze nach Name suchen',
+    params: [
+      { name: 'search_query', desc: 'Suchbegriff (Name, Stadt, Land)' },
+    ],
+    example: `GET https://api.golfcourseapi.com/v1/search?search_query=Bayern
+Authorization: Key YOUR_API_KEY`,
+    response: `{
+  "courses": [
+    {
+      "id": "de-001",
+      "club_name": "Golf Club München Eichenried",
+      "location": {
+        "city": "Eichenried",
+        "state": "Bayern",
+        "country": "Germany",
+        "latitude": 48.302,
+        "longitude": 11.884
+      },
+      "courses": [{ "id": "de-001-c1", "holes": 18 }]
+    }
+  ]
+}`
+  },
+  {
+    method: 'GET', path: '/v1/courses/{id}', desc: 'Vollständige Platzdaten',
+    params: [
+      { name: 'id', desc: 'Kurs-ID (aus /search)' },
+    ],
+    example: `GET https://api.golfcourseapi.com/v1/courses/de-001-c1
+Authorization: Key YOUR_API_KEY`,
+    response: `{
+  "course": {
+    "id": "de-001-c1",
+    "name": "Championship Course",
+    "holes": 18,
+    "tees": [
+      {
+        "name": "Weiß",
+        "gender": "M",
+        "par": 72,
+        "rating": 72.4,
+        "slope": 125,
+        "yardage": 6380
+      }
+    ],
+    "holes": [
+      { "number": 1, "par": 4, "handicap": 5,
+        "tees": { "white": 388, "blue": 415 } },
+      ...
+    ]
+  }
+}`
+  },
+];
+
+function renderEndpoints() {
+  const el = document.getElementById('endpointDocs');
+  el.innerHTML = ENDPOINTS.map((ep, i) => `
+    <div class="endpoint-doc">
+      <div class="endpoint-header" onclick="toggleEp(${i})">
+        <span class="method-badge">${ep.method}</span>
+        <code class="endpoint-path">${ep.path}</code>
+        <span class="endpoint-desc">${ep.desc}</span>
+      </div>
+      <div class="endpoint-body" id="ep-${i}">
+        <table class="param-table" style="margin-bottom:16px;">
+          <tr><th>Parameter</th><th>Beschreibung</th></tr>
+          ${ep.params.map(p=>`<tr><td>${p.name}</td><td>${p.desc}</td></tr>`).join('')}
+        </table>
+        <div style="margin-bottom:8px;font-size:0.78rem;color:var(--text-dim);font-family:'DM Mono',monospace;">ANFRAGE</div>
+        <div class="code-block" style="max-height:80px;">${ep.example}</div>
+        <div style="margin:12px 0 8px;font-size:0.78rem;color:var(--text-dim);font-family:'DM Mono',monospace;">ANTWORT</div>
+        <div class="code-block">${ep.response}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleEp(i) {
+  const body = document.getElementById(`ep-${i}`);
+  body.classList.toggle('open');
+}
+
+async function liveSearch() {
+  const q = document.getElementById('liveQuery').value;
+  const el = document.getElementById('liveResponse');
+  el.textContent = '// Anfrage wird gesendet...';
+
+  if (demoMode) {
+    await new Promise(r => setTimeout(r, 500));
+    const filtered = MOCK_COURSES.filter(c =>
+      c.club_name.toLowerCase().includes(q.toLowerCase()) ||
+      c.location.city.toLowerCase().includes(q.toLowerCase()) ||
+      c.location.state?.toLowerCase().includes(q.toLowerCase())
+    );
+    const resp = { courses: filtered.map(c => ({ id: c.id, club_name: c.club_name, location: c.location })) };
+    el.textContent = '// DEMO-Antwort (kein echter API-Call)\n\n' + JSON.stringify(resp, null, 2);
+  } else {
+    try {
+      const data = await fetchCourses(q);
+      el.textContent = JSON.stringify(data, null, 2);
+    } catch(e) {
+      el.textContent = `// FEHLER: ${e.message}\n\n// Prüfe:\n// 1. API-Key korrekt?\n// 2. CORS: Die API muss Browser-Requests erlauben\n// 3. Alternativ: Backend-Proxy verwenden`;
+    }
+  }
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+renderEndpoints();
+renderRounds();
+calcHandicap();
+// Show demo courses on load
+(async () => {
+  document.getElementById('searchInput').value = 'Bayern';
+  await searchCourses();
+})();
+</script>
+</body>
+</html>
